@@ -34,6 +34,8 @@ public interface Response extends Unwrappable {
 
   void setCookie(Cookie cookie);
 
+  String getHeader(String name);
+
   default void setCookies(Iterable<Cookie> cookies) {
     cookies.forEach(this::setCookie);
   }

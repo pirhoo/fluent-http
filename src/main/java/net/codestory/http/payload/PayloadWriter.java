@@ -22,6 +22,7 @@ import static net.codestory.http.constants.Headers.ACCEPT_ENCODING;
 import static net.codestory.http.constants.Headers.CACHE_CONTROL;
 import static net.codestory.http.constants.Headers.CONNECTION;
 import static net.codestory.http.constants.Headers.CONTENT_ENCODING;
+import static net.codestory.http.constants.Headers.CONTENT_LENGTH;
 import static net.codestory.http.constants.Headers.CONTENT_TYPE;
 import static net.codestory.http.constants.Headers.ETAG;
 import static net.codestory.http.constants.Headers.IF_MODIFIED_SINCE;
@@ -35,6 +36,7 @@ import static net.codestory.http.constants.HttpStatus.NO_CONTENT;
 import static net.codestory.http.constants.HttpStatus.OK;
 import static net.codestory.http.constants.Methods.HEAD;
 import static net.codestory.http.io.Strings.stripQuotes;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -78,6 +80,7 @@ public class PayloadWriter {
   protected final Site site;
   protected final Resources resources;
   protected final CompilerFacade compilers;
+  private String responseContentType;
 
   public PayloadWriter(Request request, Response response, Env env, Site site, Resources resources, CompilerFacade compilers) {
     this.request = request;
@@ -179,6 +182,7 @@ public class PayloadWriter {
     String uri = request.uri();
 
     String contentTypeHeader = (contentType != null) ? contentType : getContentType(content, uri);
+    responseContentType = contentTypeHeader;
     response.setHeader(CONTENT_TYPE, contentTypeHeader);
     response.setStatus(code);
 
@@ -277,7 +281,7 @@ public class PayloadWriter {
     try {
       if (shouldGzip()) {
         response.setHeader(CONTENT_ENCODING, GZIP);
-
+        resetContentLengthHeaderSetBeforeCompression();
         GZIPOutputStream gzip = new GZIPOutputStream(response.outputStream());
         stream.write(gzip);
         gzip.finish();
@@ -295,7 +299,7 @@ public class PayloadWriter {
     try {
       if (shouldGzip()) {
         response.setHeader(CONTENT_ENCODING, GZIP);
-
+        resetContentLengthHeaderSetBeforeCompression();
         GZIPOutputStream gzip = new GZIPOutputStream(response.outputStream());
         gzip.write(data);
         gzip.finish();
@@ -311,7 +315,8 @@ public class PayloadWriter {
   }
 
   protected boolean shouldGzip() {
-    return env.gzip() && env.prodMode() && request.header(ACCEPT_ENCODING, "").contains(GZIP);
+    return env.gzip() && env.prodMode() && request.header(ACCEPT_ENCODING, "").contains(GZIP) && 
+            env.isGzipableContentType(responseContentType);
   }
 
   protected boolean shouldIgnoreError(IOException e) {
@@ -510,5 +515,12 @@ public class PayloadWriter {
 
   protected Payload errorAsJson(int errorCode, Throwable e) {
     return new Payload("application/json;charset=UTF-8", new ErrorPayload(e), errorCode);
+  }
+
+  private void resetContentLengthHeaderSetBeforeCompression() {
+    if(!isEmpty(response.getHeader(CONTENT_LENGTH))) {
+      Logs.resetContentLength();
+      response.setHeader(CONTENT_LENGTH, null);
+    }
   }
 }

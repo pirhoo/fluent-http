@@ -24,6 +24,7 @@ import org.junit.Test;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
+import java.lang.reflect.Method;
 import java.util.function.*;
 
 import static java.lang.annotation.ElementType.METHOD;
@@ -76,6 +77,23 @@ public class CustomAnnotationsTest extends AbstractProdWebServerTest {
   }
 
   @Test
+  public void around_annotation_with_param_class() {
+    UsersList users = new UsersList.Builder()
+      .addUser("user", "pwd")
+      .addUser("dummy", "pwd")
+      .build();
+
+    configure(routes -> routes
+      .filter(new BasicAuthFilter("/", "realm", users))
+      .registerAroundAnnotation(DummyShallNotPass.class, ShallNotPassParam.class)
+      .add(new MyResource())
+    );
+
+    get("/toto").withAuthentication("user", "pwd").should().contain("toto");
+    get("/toto").withAuthentication("dummy", "pwd").should().contain("Index toto");
+  }
+
+  @Test
   public void after_annotation_class() {
     configure(routes -> routes
         .registerAfterAnnotation(Header.class, AddHeader.class)
@@ -89,6 +107,13 @@ public class CustomAnnotationsTest extends AbstractProdWebServerTest {
     @Override
     public Payload apply(DummyShallNotPass annotation, Context context, Function<Context, Payload> payloadSupplier) {
       return "dummy".equals(context.currentUser().name()) ? Payload.forbidden() : payloadSupplier.apply(context);
+    }
+  }
+
+  public static class ShallNotPassParam implements ApplyAroundAnnotation<DummyShallNotPass> {
+    @Override
+    public Payload apply(DummyShallNotPass annotation, Context context, Function<Context, Payload> payloadSupplier) {
+      return "dummy".equals(context.currentUser().name()) ? new Payload("Index "+context.pathParam("index")) : payloadSupplier.apply(context);
     }
   }
 
@@ -118,6 +143,12 @@ public class CustomAnnotationsTest extends AbstractProdWebServerTest {
     @Get("/")
     public String hello() {
       return "Hello";
+    }
+
+    @Header(key = "theHeader", value = "theValue")
+    @Get("/:index")
+    public String hello2(String index) {
+      return index;
     }
   }
 }

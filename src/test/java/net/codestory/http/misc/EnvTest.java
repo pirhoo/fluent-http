@@ -194,4 +194,26 @@ public class EnvTest {
     assertThat(env.liveReloadServer()).isFalse();
     assertThat(env.diskCache()).isFalse();
   }
+
+  @Test
+  public void gzipable_content_type_defaults() {
+    Env env = Env.prod();
+
+    assertThat(env.isGzipableContentType("text/html")).isTrue();
+    assertThat(env.isGzipableContentType("text/html;charset=UTF-8")).isTrue();
+    assertThat(env.isGzipableContentType("application/json")).isTrue();
+    assertThat(env.isGzipableContentType("application/json;charset=UTF-8")).isTrue();
+    assertThat(env.isGzipableContentType("application/octet-stream")).isFalse();
+    assertThat(env.isGzipableContentType("application/zip")).isFalse();
+    assertThat(env.isGzipableContentType(null)).isFalse();
+  }
+
+  @Test
+  public void with_gzip_types_overrides_defaults() {
+    Env env = Env.prod().withGzipTypes("text/plain");
+
+    assertThat(env.isGzipableContentType("text/plain")).isTrue();
+    assertThat(env.isGzipableContentType("text/html")).isFalse();
+    assertThat(env.isGzipableContentType("application/json")).isFalse();
+  }
 }

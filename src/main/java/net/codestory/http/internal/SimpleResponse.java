@@ -81,6 +81,11 @@ class SimpleResponse implements Response {
   }
 
   @Override
+  public String getHeader(String name) {
+    return response.getValue(name);
+  }
+
+  @Override
   @SuppressWarnings("unchecked")
   public <T> T unwrap(Class<T> type) {
     return type.isInstance(response) ? (T) response : null;

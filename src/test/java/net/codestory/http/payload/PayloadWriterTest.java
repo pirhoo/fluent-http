@@ -20,9 +20,11 @@ import net.codestory.http.Cookies;
 import net.codestory.http.Request;
 import net.codestory.http.Response;
 import net.codestory.http.compilers.CompilerFacade;
+import net.codestory.http.constants.Encodings;
 import net.codestory.http.io.Resources;
 import net.codestory.http.misc.Env;
 import net.codestory.http.templating.Site;
+import org.apache.http.entity.ContentType;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -231,6 +233,35 @@ public class PayloadWriterTest {
     verify(response).setStatus(OK);
     verify(response, never()).setContentLength(anyInt());
     verify(response, never()).outputStream();
+  }
+
+  @Test
+  public void ensureContentLengthIsResetUponCompression() throws IOException {
+    //Activate gzip compression
+    Env prodEnv = Env.prod();
+    when(request.header(ACCEPT_ENCODING, "")).thenReturn(Encodings.GZIP);
+    when(response.getHeader(CONTENT_LENGTH)).thenReturn("1024");
+    PayloadWriter compressionWriter = new PayloadWriter(request, response, prodEnv, site, resources, compilerFacade);
+    Payload payload = new Payload(ContentType.TEXT_PLAIN.getMimeType(), "Hello"); //"text/plain" is part of the default whitelist for Gzip
+
+    compressionWriter.writeAndClose(payload);
+
+    verify(response, times(1)).setHeader(CONTENT_LENGTH, null);
+  }
+
+  @Test
+  public void ensureContentLengthIsResetUponCompressionForStreams() throws IOException {
+
+    //Activate gzip compression for stream
+    Env prodEnv = Env.prod().withGzipTypes("application/octet-stream");
+    when(request.header(ACCEPT_ENCODING, "")).thenReturn(Encodings.GZIP);
+    when(response.getHeader(CONTENT_LENGTH)).thenReturn("1024");
+    PayloadWriter compressionWriter = new PayloadWriter(request, response, prodEnv, site, resources, compilerFacade);
+    Payload payload = new Payload( new ByteArrayInputStream("Hello".getBytes(UTF_8)));
+
+    compressionWriter.writeAndClose(payload);
+
+    verify(response, times(1)).setHeader(CONTENT_LENGTH, null);
   }
 
   static class Person {

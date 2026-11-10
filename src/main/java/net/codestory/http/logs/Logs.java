@@ -85,6 +85,8 @@ public class Logs {
     LOG.error("Unable to configure routes properly", e);
   }
 
+  public static void resetContentLength() { LOG.info("Clear Content-Length header as end-to-end compression is activated for this Content-Type");}
+
   private interface LogsImplementation {
     void info(String message);
 

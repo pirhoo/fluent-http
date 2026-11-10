@@ -203,10 +203,12 @@ In production mode:
 - Stops looking for changes in `app` folder
 - Doesn't serve `.map` and `.source` files
 - It caches static resources as much as possible in memory
-- It activates gzip compression on every request
+- It activates gzip compression for customizable whitelisted content-types on every request.
 
 We encourage you to use production mode whenever you deploy you website in real life and *not* activate it in dev mode.
 To activate production mode, start the JVM with `-DPROD_MODE=true`.
+
+To change the whitelisted content-types for compression use `Env.withGzipTypes(String... types)`.
 
 ## Static pages
 
